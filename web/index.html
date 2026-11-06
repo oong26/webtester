@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WebTester</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #fff; --text: #1c2330; --muted: #6b7587; --line: #e2e6ec;
+    --accent: #0f766e; --accent-fg: #fff;
+    --ok: #15803d; --ok-bg: #dcfce7; --high: #b91c1c; --high-bg: #fee2e2;
+    --med: #b45309; --med-bg: #fef3c7; --low: #1d4ed8; --low-bg: #dbeafe;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #11151c; --card: #181d27; --text: #e6e9ef; --muted: #8b95a7; --line: #2a3140;
+      --accent: #2dd4bf; --accent-fg: #06201d;
+      --ok: #4ade80; --ok-bg: #12301f; --high: #f87171; --high-bg: #3a1717;
+      --med: #fbbf24; --med-bg: #3a2d10; --low: #60a5fa; --low-bg: #14253f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, sans-serif; }
+  header { padding: 18px 24px; border-bottom: 1px solid var(--line); background: var(--card); }
+  header h1 { margin: 0; font-size: 18px; }
+  header p { margin: 2px 0 0; color: var(--muted); }
+  main { max-width: 1000px; margin: 0 auto; padding: 20px 16px 60px; display: grid; gap: 16px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  h2 { margin: 0 0 12px; font-size: 15px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  input, select, textarea {
+    width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--bg); color: var(--text); font: inherit;
+  }
+  textarea { font-family: ui-monospace, monospace; font-size: 12px; min-height: 64px; resize: vertical; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .checks { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-bottom: 12px; }
+  .checks label { display: flex; align-items: center; gap: 6px; color: var(--text); font-size: 13px; margin: 0; }
+  .checks input { width: auto; }
+  button { cursor: pointer; border: 1px solid var(--line); background: var(--card); color: var(--text);
+    padding: 7px 12px; border-radius: 6px; font: inherit; }
+  button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; padding: 9px 18px; }
+  button:disabled { opacity: .6; cursor: wait; }
+  .ep { display: grid; gap: 8px; grid-template-columns: 1.4fr 90px 1.6fr 80px 1.2fr 80px 32px; margin-bottom: 8px; align-items: end; }
+  @media (max-width: 760px) { .ep { grid-template-columns: 1fr 1fr; } }
+  .ep button { padding: 7px 0; }
+  .warn { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 8px;
+    background: var(--med-bg); color: var(--med); }
+  .warn input { width: auto; margin-top: 3px; }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .badge { padding: 3px 10px; border-radius: 99px; font-weight: 600; font-size: 12px; }
+  .b-ok { background: var(--ok-bg); color: var(--ok); } .b-high { background: var(--high-bg); color: var(--high); }
+  .b-medium { background: var(--med-bg); color: var(--med); } .b-low { background: var(--low-bg); color: var(--low); }
+  .b-info { background: var(--line); color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  td.detail { color: var(--muted); font-family: ui-monospace, monospace; font-size: 12px; word-break: break-word; }
+  #error { color: var(--high); margin-top: 10px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<header>
+  <h1>WebTester</h1>
+  <p>Endpoint, security and load testing for apps you own.</p>
+</header>
+<main>
+  <section>
+    <h2>Target</h2>
+    <div class="grid">
+      <div><label for="base">Base URL</label><input id="base" placeholder="http://localhost:3000"></div>
+      <div><label for="hdrs">Default headers (JSON, e.g. Authorization)</label>
+        <textarea id="hdrs" placeholder='{"Authorization": "Bearer ..."}'></textarea></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Endpoint tests</h2>
+    <div id="eps"></div>
+    <button id="addEp" type="button">+ Add endpoint</button>
+  </section>
+
+  <section>
+    <h2>Security checks</h2>
+    <div class="checks">
+      <label><input type="checkbox" id="s_headers" checked> Security headers</label>
+      <label><input type="checkbox" id="s_cors" checked> CORS</label>
+      <label><input type="checkbox" id="s_exposed" checked> Exposed paths</label>
+      <label><input type="checkbox" id="s_malformed" checked> Malformed input</label>
+    </div>
+    <div class="grid">
+      <div><label for="probe">Probe path (headers / CORS / malformed input)</label><input id="probe" placeholder="/" value="/"></div>
+      <div><label for="ratepath">Rate-limit path (blank = skip)</label><input id="ratepath" placeholder="/api/login"></div>
+      <div><label for="authpaths">Protected paths, one per line (must reject missing/invalid token)</label>
+        <textarea id="authpaths" placeholder="/api/users&#10;/api/orders"></textarea></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Load test</h2>
+    <div class="grid">
+      <div><label for="l_path">Path (blank = skip)</label><input id="l_path" placeholder="/api/health"></div>
+      <div><label for="l_total">Total requests (max 5000)</label><input id="l_total" type="number" value="200"></div>
+      <div><label for="l_conc">Concurrency (max 100)</label><input id="l_conc" type="number" value="10"></div>
+    </div>
+  </section>
+
+  <section>
+    <label class="warn"><input type="checkbox" id="own">
+      <span>I own this target or have written permission to test it. Only run this against systems you are authorized to test.</span></label>
+    <div class="row" style="margin-top:12px">
+      <button class="primary" id="run" type="button">Run tests</button>
+      <button id="export" type="button" hidden>Export JSON</button>
+      <span id="status" style="color:var(--muted)"></span>
+    </div>
+    <div id="error"></div>
+  </section>
+
+  <section id="results" hidden>
+    <h2>Results</h2>
+    <div class="badges" id="badges"></div>
+    <table>
+      <thead><tr><th>Status</th><th>Severity</th><th>Check</th><th>Message</th><th>Detail</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </section>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+let lastReport = null;
+
+function addEndpoint(v = {}) {
+  const d = document.createElement('div');
+  d.className = 'ep';
+  d.innerHTML = `
+    <div><label>Name</label><input data-k="name"></div>
+    <div><label>Method</label><select data-k="method">
+      <option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></div>
+    <div><label>Path</label><input data-k="path" placeholder="/api/users"></div>
+    <div><label>Status</label><input data-k="expect_status" type="number" placeholder="200"></div>
+    <div><label>Body contains</label><input data-k="expect_body_contains"></div>
+    <div><label>Max ms</label><input data-k="max_latency_ms" type="number"></div>
+    <button type="button" title="Remove">×</button>
+    <div style="grid-column:1/-1"><label>Request body (optional JSON)</label><textarea data-k="body" style="min-height:40px"></textarea></div>`;
+  d.querySelectorAll('[data-k]').forEach((el) => { if (v[el.dataset.k] != null) el.value = v[el.dataset.k]; });
+  d.querySelector('button').onclick = () => { d.remove(); save(); };
+  $('#eps').appendChild(d);
+}
+
+function collect() {
+  let headers = {};
+  const raw = $('#hdrs').value.trim();
+  if (raw) {
+    try { headers = JSON.parse(raw); } catch { throw new Error('Default headers must be valid JSON'); }
+  }
+  const endpoints = [...document.querySelectorAll('.ep')].map((d) => {
+    const o = {};
+    d.querySelectorAll('[data-k]').forEach((el) => { o[el.dataset.k] = el.value; });
+    o.expect_status = parseInt(o.expect_status) || 0;
+    o.max_latency_ms = parseInt(o.max_latency_ms) || 0;
+    return o;
+  }).filter((o) => o.path.trim());
+  const load = $('#l_path').value.trim()
+    ? { path: $('#l_path').value.trim(), method: 'GET', total: +$('#l_total').value, concurrency: +$('#l_conc').value }
+    : null;
+  return {
+    base_url: $('#base').value.trim(),
+    headers,
+    confirm_ownership: $('#own').checked,
+    endpoints,
+    security: {
+      headers: $('#s_headers').checked, cors: $('#s_cors').checked,
+      exposed_paths: $('#s_exposed').checked, malformed_input: $('#s_malformed').checked,
+      probe_path: $('#probe').value.trim() || '/',
+      auth_paths: $('#authpaths').value.split('\n').map((s) => s.trim()).filter(Boolean),
+      rate_limit_path: $('#ratepath').value.trim(),
+    },
+    load,
+  };
+}
+
+function save() {
+  try {
+    const f = collect();
+    f.confirm_ownership = false;
+    localStorage.setItem('webtester', JSON.stringify({ f, raw: $('#hdrs').value }));
+  } catch {}
+}
+
+function restore() {
+  try {
+    const s = JSON.parse(localStorage.getItem('webtester') || 'null');
+    if (!s) return false;
+    const f = s.f;
+    $('#base').value = f.base_url || '';
+    $('#hdrs').value = s.raw || '';
+    $('#probe').value = f.security.probe_path || '/';
+    $('#ratepath').value = f.security.rate_limit_path || '';
+    $('#authpaths').value = (f.security.auth_paths || []).join('\n');
+    $('#s_headers').checked = f.security.headers; $('#s_cors').checked = f.security.cors;
+    $('#s_exposed').checked = f.security.exposed_paths; $('#s_malformed').checked = f.security.malformed_input;
+    if (f.load) { $('#l_path').value = f.load.path; $('#l_total').value = f.load.total; $('#l_conc').value = f.load.concurrency; }
+    (f.endpoints || []).forEach(addEndpoint);
+    return true;
+  } catch { return false; }
+}
+
+function badge(text, cls) {
+  const s = document.createElement('span');
+  s.className = 'badge ' + cls; s.textContent = text; return s;
+}
+
+function render(rep) {
+  lastReport = rep;
+  $('#results').hidden = false; $('#export').hidden = false;
+  const b = $('#badges'); b.replaceChildren();
+  const s = rep.summary;
+  b.append(badge(`${s.passed} passed`, 'b-ok'), badge(`${s.failed} failed`, s.failed ? 'b-high' : 'b-info'),
+    badge(`${s.high} high`, 'b-high'), badge(`${s.medium} medium`, 'b-medium'), badge(`${s.low} low`, 'b-low'),
+    badge(`${rep.duration_ms} ms total`, 'b-info'));
+  const body = $('#rows'); body.replaceChildren();
+  const order = { high: 0, medium: 1, low: 2, info: 3 };
+  const rows = [...rep.results].sort((a, c) => (a.passed - c.passed) || (order[a.severity] - order[c.severity]));
+  for (const r of rows) {
+    const tr = document.createElement('tr');
+    const cells = [
+      badge(r.passed ? 'PASS' : 'FAIL', r.passed ? 'b-ok' : 'b-high'),
+      r.passed ? badge('-', 'b-info') : badge(r.severity, 'b-' + r.severity),
+      r.check, r.message, r.detail || '',
+    ];
+    cells.forEach((c, i) => {
+      const td = document.createElement('td');
+      if (i === 4) td.className = 'detail';
+      if (c instanceof Node) td.append(c); else td.textContent = c;
+      tr.append(td);
+    });
+    body.append(tr);
+  }
+  $('#results').scrollIntoView({ behavior: 'smooth' });
+}
+
+$('#addEp').onclick = () => addEndpoint({ method: 'GET' });
+
+$('#run').onclick = async () => {
+  $('#error').textContent = '';
+  let payload;
+  try { payload = collect(); } catch (e) { $('#error').textContent = e.message; return; }
+  save();
+  const btn = $('#run');
+  btn.disabled = true; $('#status').textContent = 'Running…';
+  try {
+    const res = await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+    render(data);
+    $('#status').textContent = `Done in ${data.duration_ms} ms`;
+  } catch (e) {
+    $('#error').textContent = e.message; $('#status').textContent = '';
+  } finally { btn.disabled = false; }
+};
+
+$('#export').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(lastReport, null, 2)], { type: 'application/json' }));
+  a.download = `webtester-${lastReport.id}.json`; a.click();
+};
+
+if (!restore()) addEndpoint({ name: 'Health check', method: 'GET', path: '/health', expect_status: 200 });
+</script>
+</body>
+</html>
