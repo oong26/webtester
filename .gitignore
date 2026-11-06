@@ -6,3 +6,4 @@
 ./webtester.db
 ./webtester.db-shm
 ./webtester.db-wal
+/tmp
