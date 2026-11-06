@@ -1,273 +1,494 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>WebTester</title>
 <style>
-  :root {
-    --bg: #f6f7f9; --card: #fff; --text: #1c2330; --muted: #6b7587; --line: #e2e6ec;
-    --accent: #0f766e; --accent-fg: #fff;
-    --ok: #15803d; --ok-bg: #dcfce7; --high: #b91c1c; --high-bg: #fee2e2;
-    --med: #b45309; --med-bg: #fef3c7; --low: #1d4ed8; --low-bg: #dbeafe;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #11151c; --card: #181d27; --text: #e6e9ef; --muted: #8b95a7; --line: #2a3140;
-      --accent: #2dd4bf; --accent-fg: #06201d;
-      --ok: #4ade80; --ok-bg: #12301f; --high: #f87171; --high-bg: #3a1717;
-      --med: #fbbf24; --med-bg: #3a2d10; --low: #60a5fa; --low-bg: #14253f;
-    }
-  }
+  :root { --bg:#0f1117; --panel:#1a1d27; --border:#2a2f3d; --text:#e6e9f0; --muted:#8b92a5;
+          --high:#e5484d; --med:#f5a524; --low:#3b82f6; --info:#6b7280; --ok:#10b981; }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, sans-serif; }
-  header { padding: 18px 24px; border-bottom: 1px solid var(--line); background: var(--card); }
-  header h1 { margin: 0; font-size: 18px; }
-  header p { margin: 2px 0 0; color: var(--muted); }
-  main { max-width: 1000px; margin: 0 auto; padding: 20px 16px 60px; display: grid; gap: 16px; }
-  section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
-  h2 { margin: 0 0 12px; font-size: 15px; }
-  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-  input, select, textarea {
-    width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px;
-    background: var(--bg); color: var(--text); font: inherit;
-  }
-  textarea { font-family: ui-monospace, monospace; font-size: 12px; min-height: 64px; resize: vertical; }
-  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-  .checks { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-bottom: 12px; }
-  .checks label { display: flex; align-items: center; gap: 6px; color: var(--text); font-size: 13px; margin: 0; }
-  .checks input { width: auto; }
-  button { cursor: pointer; border: 1px solid var(--line); background: var(--card); color: var(--text);
-    padding: 7px 12px; border-radius: 6px; font: inherit; }
-  button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; padding: 9px 18px; }
-  button:disabled { opacity: .6; cursor: wait; }
-  .ep { display: grid; gap: 8px; grid-template-columns: 1.4fr 90px 1.6fr 80px 1.2fr 80px 32px; margin-bottom: 8px; align-items: end; }
-  @media (max-width: 760px) { .ep { grid-template-columns: 1fr 1fr; } }
-  .ep button { padding: 7px 0; }
-  .warn { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 8px;
-    background: var(--med-bg); color: var(--med); }
-  .warn input { width: auto; margin-top: 3px; }
-  .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-  .badge { padding: 3px 10px; border-radius: 99px; font-weight: 600; font-size: 12px; }
-  .b-ok { background: var(--ok-bg); color: var(--ok); } .b-high { background: var(--high-bg); color: var(--high); }
-  .b-medium { background: var(--med-bg); color: var(--med); } .b-low { background: var(--low-bg); color: var(--low); }
-  .b-info { background: var(--line); color: var(--muted); }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { font-size: 12px; color: var(--muted); font-weight: 600; }
-  td.detail { color: var(--muted); font-family: ui-monospace, monospace; font-size: 12px; word-break: break-word; }
-  #error { color: var(--high); margin-top: 10px; }
-  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  body { margin:0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { padding: 12px 24px; border-bottom: 1px solid var(--border); display:flex; gap:20px; align-items:center; }
+  header h1 { margin:0; font-size: 18px; }
+  nav { display:flex; gap:4px; }
+  nav button { background:transparent; color:var(--muted); border:1px solid transparent;
+    padding:6px 12px; border-radius:4px; cursor:pointer; font-size:13px; }
+  nav button.active { background:var(--panel); color:var(--text); border-color:var(--border); }
+  main { display: grid; grid-template-columns: 360px 1fr; height: calc(100vh - 53px); }
+  aside { border-right: 1px solid var(--border); padding: 16px; overflow-y:auto; }
+  section.detail { padding: 16px 24px; overflow-y:auto; }
+  fieldset { border: 1px solid var(--border); border-radius: 6px; margin: 0 0 16px; padding: 12px; }
+  legend { padding: 0 6px; color: var(--muted); font-size: 12px; }
+  label { display:block; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+  input, select, textarea { width: 100%; padding: 8px; background: var(--panel); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px; font-family: inherit; font-size: 13px; }
+  textarea { resize: vertical; min-height: 50px; font-family: monospace; }
+  button.primary { padding: 8px 14px; background: var(--ok); color: #0f1117; border: none;
+    border-radius: 4px; cursor: pointer; font-weight: 600; margin-top: 12px; }
+  button.primary:disabled { background: #2a2f3d; color: #6b7280; cursor: not-allowed; }
+  button.ghost { background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    padding: 4px 10px; font-size: 11px; border-radius: 4px; cursor: pointer; }
+  .item { padding: 10px; border: 1px solid var(--border); border-radius: 6px;
+    margin-bottom: 8px; cursor: pointer; }
+  .item:hover { background: var(--panel); }
+  .item.active { border-color: var(--ok); }
+  .row { display:flex; justify-content: space-between; align-items:center; gap:8px; }
+  .badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .badge.queued, .badge.running { background: var(--low); color: white; }
+  .badge.completed { background: var(--ok); color: white; }
+  .badge.failed, .badge.cancelled { background: var(--high); color: white; }
+  .progress { height: 4px; background: var(--border); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .progress > div { height: 100%; background: var(--ok); transition: width 0.3s; }
+  .finding { border: 1px solid var(--border); border-left: 3px solid; padding: 10px 12px;
+    border-radius: 4px; margin-bottom: 8px; background: var(--panel); }
+  .finding.High { border-left-color: var(--high); }
+  .finding.Medium { border-left-color: var(--med); }
+  .finding.Low { border-left-color: var(--low); }
+  .finding.Info { border-left-color: var(--info); }
+  .finding h4 { margin: 0 0 4px; font-size: 13px; }
+  .finding .meta { font-size: 11px; color: var(--muted); display:flex; gap:10px; flex-wrap:wrap; }
+  .finding .evidence { font-family: monospace; font-size: 11px; color: var(--muted);
+    margin-top: 6px; word-break: break-all; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .counts { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .count { padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+  .count.High { background: rgba(229,72,77,0.2); color: var(--high); }
+  .count.Medium { background: rgba(245,165,36,0.2); color: var(--med); }
+  .count.Low { background: rgba(59,130,246,0.2); color: var(--low); }
+  .count.Info { background: rgba(107,114,128,0.2); color: var(--info); }
+  .hidden { display: none; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0 16px; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+  .stat .v { font-size: 20px; font-weight: 600; }
+  .stat .l { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  table.status { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  table.status td, table.status th { padding: 6px 10px; text-align: left; font-size: 12px;
+    border-bottom: 1px solid var(--border); }
+  table.status th { color: var(--muted); font-weight: 500; }
 </style>
 </head>
 <body>
 <header>
   <h1>WebTester</h1>
-  <p>Endpoint, security and load testing for apps you own.</p>
+  <nav>
+    <button data-tab="scans" class="active">Security scans</button>
+    <button data-tab="load">Load tests</button>
+  </nav>
 </header>
-<main>
-  <section>
-    <h2>Target</h2>
-    <div class="grid">
-      <div><label for="base">Base URL</label><input id="base" placeholder="http://localhost:3000"></div>
-      <div><label for="hdrs">Default headers (JSON, e.g. Authorization)</label>
-        <textarea id="hdrs" placeholder='{"Authorization": "Bearer ..."}'></textarea></div>
+
+<main data-page="scans">
+  <aside>
+    <fieldset>
+      <legend>New scan</legend>
+      <label>Target URL</label>
+      <input id="target" placeholder="http://localhost:8000" />
+      <label>Scan type</label>
+      <select id="scanType">
+        <option value="baseline">baseline (passive)</option>
+        <option value="api">api (OpenAPI)</option>
+        <option value="full">full (active)</option>
+      </select>
+      <div id="openapiRow" class="hidden">
+        <label>OpenAPI URL</label>
+        <input id="openapi" placeholder="http://localhost:8000/api/v1/openapi.yaml" />
+      </div>
+      <label style="display:flex; gap:8px; align-items:center; margin-top:12px;">
+        <input type="checkbox" id="ownership" style="width:auto;" />
+        I own or have permission to test this target
+      </label>
+      <details style="margin-top:12px;">
+        <summary class="muted" style="cursor:pointer;">Auth &amp; BOLA (optional)</summary>
+        <label>Auth header</label>
+        <input id="authHeader" value="Authorization" />
+        <label>User A token</label>
+        <input id="userA" placeholder="Bearer ..." />
+        <label>User B token (BOLA probe)</label>
+        <input id="userB" placeholder="Bearer ..." />
+        <label>BOLA probe URLs (one per line)</label>
+        <textarea id="bolaUrls"></textarea>
+      </details>
+      <button id="submit" class="primary">Start scan</button>
+      <div id="error" class="muted" style="color:var(--high); margin-top:8px;"></div>
+    </fieldset>
+    <div class="row" style="margin-bottom:8px;">
+      <strong style="font-size:13px;">Scans</strong>
+      <button id="refresh" class="ghost">Refresh</button>
+    </div>
+    <div id="scanList"></div>
+  </aside>
+  <section class="detail">
+    <div id="detailEmpty" class="muted">Select a scan or start a new one.</div>
+    <div id="detail" class="hidden">
+      <div class="row">
+        <div>
+          <div id="detailTarget" style="font-size:15px; font-weight:600;"></div>
+          <div id="detailMeta" class="muted"></div>
+        </div>
+        <span id="detailStatus" class="badge"></span>
+      </div>
+      <div class="progress" style="margin: 12px 0;"><div id="detailProgress" style="width:0%;"></div></div>
+      <div id="errorBox" class="muted" style="color:var(--high); margin-bottom:12px;"></div>
+      <div id="counts" class="counts"></div>
+      <div id="findings"></div>
     </div>
   </section>
+</main>
 
-  <section>
-    <h2>Endpoint tests</h2>
-    <div id="eps"></div>
-    <button id="addEp" type="button">+ Add endpoint</button>
-  </section>
-
-  <section>
-    <h2>Security checks</h2>
-    <div class="checks">
-      <label><input type="checkbox" id="s_headers" checked> Security headers</label>
-      <label><input type="checkbox" id="s_cors" checked> CORS</label>
-      <label><input type="checkbox" id="s_exposed" checked> Exposed paths</label>
-      <label><input type="checkbox" id="s_malformed" checked> Malformed input</label>
+<main data-page="load" class="hidden">
+  <aside>
+    <fieldset>
+      <legend>New load test</legend>
+      <label>Target URL</label>
+      <input id="ltTarget" placeholder="http://localhost:8000/healthz" />
+      <div class="grid2">
+        <div>
+          <label>Method</label>
+          <select id="ltMethod">
+            <option>GET</option><option>HEAD</option><option>OPTIONS</option>
+            <option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option>
+          </select>
+        </div>
+        <div>
+          <label>Duration (s)</label>
+          <input id="ltDuration" type="number" value="30" min="1" max="600" />
+        </div>
+      </div>
+      <div class="grid2">
+        <div>
+          <label>Requests / second</label>
+          <input id="ltRPS" type="number" value="50" min="1" max="5000" />
+        </div>
+        <div>
+          <label>Concurrency</label>
+          <input id="ltConcurrency" type="number" value="20" min="1" max="500" />
+        </div>
+      </div>
+      <details style="margin-top:8px;">
+        <summary class="muted" style="cursor:pointer;">Headers &amp; body</summary>
+        <label>Headers (one per line, "Name: Value")</label>
+        <textarea id="ltHeaders" placeholder="Authorization: Bearer ..."></textarea>
+        <label>Request body</label>
+        <textarea id="ltBody"></textarea>
+      </details>
+      <label style="display:flex; gap:8px; align-items:center; margin-top:12px;">
+        <input type="checkbox" id="ltOwnership" style="width:auto;" />
+        I own or have permission to load test this target
+      </label>
+      <button id="ltSubmit" class="primary">Start load test</button>
+      <div id="ltError" class="muted" style="color:var(--high); margin-top:8px;"></div>
+    </fieldset>
+    <div class="row" style="margin-bottom:8px;">
+      <strong style="font-size:13px;">Load tests</strong>
+      <button id="ltRefresh" class="ghost">Refresh</button>
     </div>
-    <div class="grid">
-      <div><label for="probe">Probe path (headers / CORS / malformed input)</label><input id="probe" placeholder="/" value="/"></div>
-      <div><label for="ratepath">Rate-limit path (blank = skip)</label><input id="ratepath" placeholder="/api/login"></div>
-      <div><label for="authpaths">Protected paths, one per line (must reject missing/invalid token)</label>
-        <textarea id="authpaths" placeholder="/api/users&#10;/api/orders"></textarea></div>
+    <div id="ltList"></div>
+  </aside>
+  <section class="detail">
+    <div id="ltEmpty" class="muted">Select a load test or start a new one.</div>
+    <div id="ltDetail" class="hidden">
+      <div class="row">
+        <div>
+          <div id="ltTargetView" style="font-size:15px; font-weight:600;"></div>
+          <div id="ltMeta" class="muted"></div>
+        </div>
+        <span id="ltStatusBadge" class="badge"></span>
+      </div>
+      <div class="progress" style="margin:12px 0;"><div id="ltProgress" style="width:0%;"></div></div>
+      <div id="ltErrorBox" class="muted" style="color:var(--high); margin-bottom:12px;"></div>
+      <div id="ltStats" class="stats"></div>
+      <div id="ltLatency"></div>
+      <div id="ltBreakdown"></div>
+      <div id="ltErrorBreakdown"></div>
+      <div style="margin-top:12px;">
+        <button id="ltCancel" class="ghost hidden">Cancel</button>
+      </div>
     </div>
-  </section>
-
-  <section>
-    <h2>Load test</h2>
-    <div class="grid">
-      <div><label for="l_path">Path (blank = skip)</label><input id="l_path" placeholder="/api/health"></div>
-      <div><label for="l_total">Total requests (max 5000)</label><input id="l_total" type="number" value="200"></div>
-      <div><label for="l_conc">Concurrency (max 100)</label><input id="l_conc" type="number" value="10"></div>
-    </div>
-  </section>
-
-  <section>
-    <label class="warn"><input type="checkbox" id="own">
-      <span>I own this target or have written permission to test it. Only run this against systems you are authorized to test.</span></label>
-    <div class="row" style="margin-top:12px">
-      <button class="primary" id="run" type="button">Run tests</button>
-      <button id="export" type="button" hidden>Export JSON</button>
-      <span id="status" style="color:var(--muted)"></span>
-    </div>
-    <div id="error"></div>
-  </section>
-
-  <section id="results" hidden>
-    <h2>Results</h2>
-    <div class="badges" id="badges"></div>
-    <table>
-      <thead><tr><th>Status</th><th>Severity</th><th>Check</th><th>Message</th><th>Detail</th></tr></thead>
-      <tbody id="rows"></tbody>
-    </table>
   </section>
 </main>
 
 <script>
-const $ = (s) => document.querySelector(s);
-let lastReport = null;
+const $ = (id) => document.getElementById(id);
 
-function addEndpoint(v = {}) {
-  const d = document.createElement('div');
-  d.className = 'ep';
-  d.innerHTML = `
-    <div><label>Name</label><input data-k="name"></div>
-    <div><label>Method</label><select data-k="method">
-      <option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></div>
-    <div><label>Path</label><input data-k="path" placeholder="/api/users"></div>
-    <div><label>Status</label><input data-k="expect_status" type="number" placeholder="200"></div>
-    <div><label>Body contains</label><input data-k="expect_body_contains"></div>
-    <div><label>Max ms</label><input data-k="max_latency_ms" type="number"></div>
-    <button type="button" title="Remove">×</button>
-    <div style="grid-column:1/-1"><label>Request body (optional JSON)</label><textarea data-k="body" style="min-height:40px"></textarea></div>`;
-  d.querySelectorAll('[data-k]').forEach((el) => { if (v[el.dataset.k] != null) el.value = v[el.dataset.k]; });
-  d.querySelector('button').onclick = () => { d.remove(); save(); };
-  $('#eps').appendChild(d);
+// Tabs
+document.querySelectorAll('nav button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('main').forEach(m =>
+      m.classList.toggle('hidden', m.dataset.page !== btn.dataset.tab));
+  });
+});
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, opts);
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body?.error?.message || `HTTP ${res.status}`);
+  return body.data;
 }
 
-function collect() {
-  let headers = {};
-  const raw = $('#hdrs').value.trim();
-  if (raw) {
-    try { headers = JSON.parse(raw); } catch { throw new Error('Default headers must be valid JSON'); }
-  }
-  const endpoints = [...document.querySelectorAll('.ep')].map((d) => {
-    const o = {};
-    d.querySelectorAll('[data-k]').forEach((el) => { o[el.dataset.k] = el.value; });
-    o.expect_status = parseInt(o.expect_status) || 0;
-    o.max_latency_ms = parseInt(o.max_latency_ms) || 0;
-    return o;
-  }).filter((o) => o.path.trim());
-  const load = $('#l_path').value.trim()
-    ? { path: $('#l_path').value.trim(), method: 'GET', total: +$('#l_total').value, concurrency: +$('#l_conc').value }
-    : null;
-  return {
-    base_url: $('#base').value.trim(),
-    headers,
-    confirm_ownership: $('#own').checked,
-    endpoints,
-    security: {
-      headers: $('#s_headers').checked, cors: $('#s_cors').checked,
-      exposed_paths: $('#s_exposed').checked, malformed_input: $('#s_malformed').checked,
-      probe_path: $('#probe').value.trim() || '/',
-      auth_paths: $('#authpaths').value.split('\n').map((s) => s.trim()).filter(Boolean),
-      rate_limit_path: $('#ratepath').value.trim(),
-    },
-    load,
-  };
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-function save() {
+/* -------------------- Scans -------------------- */
+
+$('scanType').addEventListener('change', (e) => {
+  $('openapiRow').classList.toggle('hidden', e.target.value !== 'api');
+});
+
+$('submit').addEventListener('click', async () => {
+  $('error').textContent = '';
+  $('submit').disabled = true;
   try {
-    const f = collect();
-    f.confirm_ownership = false;
-    localStorage.setItem('webtester', JSON.stringify({ f, raw: $('#hdrs').value }));
+    const payload = {
+      target_url: $('target').value.trim(),
+      scan_type: $('scanType').value,
+      confirm_ownership: $('ownership').checked,
+    };
+    if (payload.scan_type === 'api') payload.openapi_url = $('openapi').value.trim();
+    const userA = $('userA').value.trim(), userB = $('userB').value.trim();
+    if (userA) {
+      payload.auth = { header_name: $('authHeader').value.trim() || 'Authorization', user_a: userA };
+      if (userB) payload.auth.user_b = userB;
+    }
+    const bola = $('bolaUrls').value.split('\n').map(s => s.trim()).filter(Boolean);
+    if (bola.length) payload.bola_probe_urls = bola;
+    const scan = await api('/api/v1/scans', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    currentScanId = scan.id;
+    await refreshScans();
+    openScan(scan.id);
+  } catch (e) { $('error').textContent = e.message; }
+  finally { $('submit').disabled = false; }
+});
+
+$('refresh').addEventListener('click', refreshScans);
+
+let currentScanId = null;
+let scanPoll = null;
+
+async function refreshScans() {
+  try {
+    const scans = await api('/api/v1/scans');
+    const el = $('scanList');
+    if (!scans || scans.length === 0) { el.innerHTML = '<div class="muted">No scans yet.</div>'; return; }
+    el.innerHTML = scans.map(s => `
+      <div class="item ${s.id === currentScanId ? 'active' : ''}" data-id="${s.id}">
+        <div class="row">
+          <span style="font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(s.target_url)}</span>
+          <span class="badge ${s.status}">${s.status}</span>
+        </div>
+        <div class="muted" style="margin-top:4px; font-size:11px;">${s.scan_type} · ${s.findings_count} findings</div>
+      </div>
+    `).join('');
+    el.querySelectorAll('.item').forEach(item => item.addEventListener('click', () => openScan(item.dataset.id)));
   } catch {}
 }
 
-function restore() {
+async function openScan(id) {
+  currentScanId = id;
+  if (scanPoll) clearInterval(scanPoll);
+  document.querySelectorAll('#scanList .item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+  const s = await renderScan();
+  if (!s || s.status === 'completed' || s.status === 'failed') return;
+  scanPoll = setInterval(async () => {
+    if (currentScanId !== id) { clearInterval(scanPoll); return; }
+    const s2 = await renderScan();
+    if (!s2 || s2.status === 'completed' || s2.status === 'failed') { clearInterval(scanPoll); refreshScans(); }
+  }, 2000);
+}
+
+async function renderScan() {
   try {
-    const s = JSON.parse(localStorage.getItem('webtester') || 'null');
-    if (!s) return false;
-    const f = s.f;
-    $('#base').value = f.base_url || '';
-    $('#hdrs').value = s.raw || '';
-    $('#probe').value = f.security.probe_path || '/';
-    $('#ratepath').value = f.security.rate_limit_path || '';
-    $('#authpaths').value = (f.security.auth_paths || []).join('\n');
-    $('#s_headers').checked = f.security.headers; $('#s_cors').checked = f.security.cors;
-    $('#s_exposed').checked = f.security.exposed_paths; $('#s_malformed').checked = f.security.malformed_input;
-    if (f.load) { $('#l_path').value = f.load.path; $('#l_total').value = f.load.total; $('#l_conc').value = f.load.concurrency; }
-    (f.endpoints || []).forEach(addEndpoint);
-    return true;
-  } catch { return false; }
+    const s = await api(`/api/v1/scans/${currentScanId}`);
+    $('detailEmpty').classList.add('hidden');
+    $('detail').classList.remove('hidden');
+    $('detailTarget').textContent = s.target_url;
+    $('detailMeta').textContent = `${s.scan_type} · created ${new Date(s.created_at).toLocaleString()}`;
+    $('detailStatus').className = `badge ${s.status}`;
+    $('detailStatus').textContent = s.status;
+    $('detailProgress').style.width = s.progress + '%';
+    $('errorBox').textContent = s.error_message || '';
+    if (s.status === 'completed') renderFindings(s.id);
+    return s;
+  } catch { return null; }
 }
 
-function badge(text, cls) {
-  const s = document.createElement('span');
-  s.className = 'badge ' + cls; s.textContent = text; return s;
+async function renderFindings(id) {
+  try {
+    const findings = await api(`/api/v1/scans/${id}/findings`);
+    const counts = { High: 0, Medium: 0, Low: 0, Info: 0 };
+    findings.forEach(f => { counts[f.severity] = (counts[f.severity] || 0) + 1; });
+    $('counts').innerHTML = Object.entries(counts).filter(([, n]) => n > 0)
+      .map(([sev, n]) => `<span class="count ${sev}">${n} ${sev}</span>`).join('')
+      || '<span class="muted">No findings.</span>';
+    $('findings').innerHTML = findings.map(f => `
+      <div class="finding ${f.severity}">
+        <h4>${escapeHtml(f.name)}</h4>
+        <div class="meta"><span>${f.severity}</span><span>${f.confidence} confidence</span>
+          <span>${escapeHtml(f.source)}</span><span>rule ${escapeHtml(f.rule_id)}</span></div>
+        <div class="evidence">${escapeHtml(f.url)}</div>
+        ${f.evidence ? `<div class="evidence">${escapeHtml(f.evidence)}</div>` : ''}
+      </div>
+    `).join('') || '<div class="muted">No findings.</div>';
+  } catch {}
 }
 
-function render(rep) {
-  lastReport = rep;
-  $('#results').hidden = false; $('#export').hidden = false;
-  const b = $('#badges'); b.replaceChildren();
-  const s = rep.summary;
-  b.append(badge(`${s.passed} passed`, 'b-ok'), badge(`${s.failed} failed`, s.failed ? 'b-high' : 'b-info'),
-    badge(`${s.high} high`, 'b-high'), badge(`${s.medium} medium`, 'b-medium'), badge(`${s.low} low`, 'b-low'),
-    badge(`${rep.duration_ms} ms total`, 'b-info'));
-  const body = $('#rows'); body.replaceChildren();
-  const order = { high: 0, medium: 1, low: 2, info: 3 };
-  const rows = [...rep.results].sort((a, c) => (a.passed - c.passed) || (order[a.severity] - order[c.severity]));
-  for (const r of rows) {
-    const tr = document.createElement('tr');
-    const cells = [
-      badge(r.passed ? 'PASS' : 'FAIL', r.passed ? 'b-ok' : 'b-high'),
-      r.passed ? badge('-', 'b-info') : badge(r.severity, 'b-' + r.severity),
-      r.check, r.message, r.detail || '',
-    ];
-    cells.forEach((c, i) => {
-      const td = document.createElement('td');
-      if (i === 4) td.className = 'detail';
-      if (c instanceof Node) td.append(c); else td.textContent = c;
-      tr.append(td);
+/* -------------------- Load tests -------------------- */
+
+$('ltSubmit').addEventListener('click', async () => {
+  $('ltError').textContent = '';
+  $('ltSubmit').disabled = true;
+  try {
+    let headers = {};
+    const rawHeaders = $('ltHeaders').value.trim();
+    if (rawHeaders.startsWith('{')) {
+      try { headers = JSON.parse(rawHeaders); } catch {}
+    } else {
+      rawHeaders.split('\n').forEach(line => {
+        const i = line.indexOf(':');
+        if (i > 0) headers[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+      });
+    }
+    const payload = {
+      target_url: $('ltTarget').value.trim(),
+      method: $('ltMethod').value,
+      duration_seconds: parseInt($('ltDuration').value, 10),
+      requests_per_sec: parseInt($('ltRPS').value, 10),
+      concurrency: parseInt($('ltConcurrency').value, 10),
+      confirm_ownership: $('ltOwnership').checked,
+    };
+    if (Object.keys(headers).length) payload.headers = headers;
+    const body = $('ltBody').value;
+    if (body) payload.body = body;
+    const lt = await api('/api/v1/load-tests', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
     });
-    body.append(tr);
-  }
-  $('#results').scrollIntoView({ behavior: 'smooth' });
+    currentLoadId = lt.id;
+    await refreshLoads();
+    openLoad(lt.id);
+  } catch (e) { $('ltError').textContent = e.message; }
+  finally { $('ltSubmit').disabled = false; }
+});
+
+$('ltRefresh').addEventListener('click', refreshLoads);
+$('ltCancel').addEventListener('click', async () => {
+  if (!currentLoadId) return;
+  try { await api(`/api/v1/load-tests/${currentLoadId}/cancel`, { method: 'POST' }); }
+  catch (e) { $('ltErrorBox').textContent = e.message; }
+});
+
+let currentLoadId = null;
+let loadPoll = null;
+
+async function refreshLoads() {
+  try {
+    const lts = await api('/api/v1/load-tests');
+    const el = $('ltList');
+    if (!lts || lts.length === 0) { el.innerHTML = '<div class="muted">No load tests yet.</div>'; return; }
+    el.innerHTML = lts.map(lt => `
+      <div class="item ${lt.id === currentLoadId ? 'active' : ''}" data-id="${lt.id}">
+        <div class="row">
+          <span style="font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(lt.method)} ${escapeHtml(lt.target_url)}</span>
+          <span class="badge ${lt.status}">${lt.status}</span>
+        </div>
+        <div class="muted" style="margin-top:4px; font-size:11px;">
+          ${lt.duration_seconds}s @ ${lt.requests_per_sec} rps · ${lt.total_requests} reqs
+        </div>
+      </div>
+    `).join('');
+    el.querySelectorAll('.item').forEach(item => item.addEventListener('click', () => openLoad(item.dataset.id)));
+  } catch {}
 }
 
-$('#addEp').onclick = () => addEndpoint({ method: 'GET' });
+async function openLoad(id) {
+  currentLoadId = id;
+  if (loadPoll) clearInterval(loadPoll);
+  document.querySelectorAll('#ltList .item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+  const s = await renderLoad();
+  if (!s || s.status === 'completed' || s.status === 'failed' || s.status === 'cancelled') return;
+  loadPoll = setInterval(async () => {
+    if (currentLoadId !== id) { clearInterval(loadPoll); return; }
+    const s2 = await renderLoad();
+    if (!s2 || s2.status === 'completed' || s2.status === 'failed' || s2.status === 'cancelled') {
+      clearInterval(loadPoll); refreshLoads();
+    }
+  }, 1000);
+}
 
-$('#run').onclick = async () => {
-  $('#error').textContent = '';
-  let payload;
-  try { payload = collect(); } catch (e) { $('#error').textContent = e.message; return; }
-  save();
-  const btn = $('#run');
-  btn.disabled = true; $('#status').textContent = 'Running…';
+function fmtMs(n) { return (n ?? 0).toFixed(1) + ' ms'; }
+function fmtNum(n) { return (n ?? 0).toLocaleString(); }
+
+async function renderLoad() {
   try {
-    const res = await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Request failed');
-    render(data);
-    $('#status').textContent = `Done in ${data.duration_ms} ms`;
-  } catch (e) {
-    $('#error').textContent = e.message; $('#status').textContent = '';
-  } finally { btn.disabled = false; }
-};
+    const lt = await api(`/api/v1/load-tests/${currentLoadId}`);
+    $('ltEmpty').classList.add('hidden');
+    $('ltDetail').classList.remove('hidden');
+    $('ltTargetView').textContent = `${lt.method} ${lt.target_url}`;
+    $('ltMeta').textContent = `${lt.duration_seconds}s · target ${lt.requests_per_sec} rps · concurrency ${lt.concurrency}`;
+    $('ltStatusBadge').className = `badge ${lt.status}`;
+    $('ltStatusBadge').textContent = lt.status;
+    const isRunning = lt.status === 'running' || lt.status === 'queued';
+    $('ltCancel').classList.toggle('hidden', !isRunning);
+    const elapsed = lt.started_at ? (new Date() - new Date(lt.started_at)) / 1000 : 0;
+    const pct = lt.status === 'queued' ? 0
+      : lt.status === 'running' ? Math.min(99, Math.round(elapsed / lt.duration_seconds * 100))
+      : 100;
+    $('ltProgress').style.width = pct + '%';
+    $('ltErrorBox').textContent = lt.error_message || '';
 
-$('#export').onclick = () => {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(lastReport, null, 2)], { type: 'application/json' }));
-  a.download = `webtester-${lastReport.id}.json`; a.click();
-};
+    $('ltStats').innerHTML = `
+      <div class="stat"><div class="v">${fmtNum(lt.total_requests)}</div><div class="l">total requests</div></div>
+      <div class="stat"><div class="v">${fmtNum(lt.successful)}</div><div class="l">successful (2xx/3xx)</div></div>
+      <div class="stat"><div class="v">${fmtNum(lt.failed)}</div><div class="l">failed</div></div>
+      <div class="stat"><div class="v">${(lt.error_rate ?? 0).toFixed(2)}%</div><div class="l">error rate</div></div>
+      <div class="stat"><div class="v">${(lt.rps_achieved ?? 0).toFixed(1)}</div><div class="l">rps achieved</div></div>
+      <div class="stat"><div class="v">${fmtMs(lt.p50_ms)}</div><div class="l">p50 latency</div></div>
+      <div class="stat"><div class="v">${fmtMs(lt.p95_ms)}</div><div class="l">p95 latency</div></div>
+      <div class="stat"><div class="v">${fmtMs(lt.p99_ms)}</div><div class="l">p99 latency</div></div>
+    `;
 
-if (!restore()) addEndpoint({ name: 'Health check', method: 'GET', path: '/health', expect_status: 200 });
+    $('ltLatency').innerHTML = lt.total_requests > 0 ? `
+      <h3 style="font-size:14px; margin:16px 0 8px;">Latency distribution</h3>
+      <table class="status">
+        <thead><tr><th>min</th><th>mean</th><th>p50</th><th>p90</th><th>p95</th><th>p99</th><th>max</th></tr></thead>
+        <tbody><tr>
+          <td>${fmtMs(lt.min_ms)}</td><td>${fmtMs(lt.mean_ms)}</td>
+          <td>${fmtMs(lt.p50_ms)}</td><td>${fmtMs(lt.p90_ms)}</td>
+          <td>${fmtMs(lt.p95_ms)}</td><td>${fmtMs(lt.p99_ms)}</td>
+          <td>${fmtMs(lt.max_ms)}</td>
+        </tr></tbody>
+      </table>` : '';
+
+    const breakdown = lt.status_breakdown || {};
+    const keys = Object.keys(breakdown).sort();
+    $('ltBreakdown').innerHTML = keys.length ? `
+      <h3 style="font-size:14px; margin:16px 0 8px;">Status code breakdown</h3>
+      <table class="status">
+        <thead><tr><th>code</th><th>count</th></tr></thead>
+        <tbody>${keys.map(k => `<tr><td>${k}</td><td>${fmtNum(breakdown[k])}</td></tr>`).join('')}</tbody>
+      </table>` : '';
+
+    const errBreakdown = lt.error_breakdown || {};
+    const errKeys = Object.keys(errBreakdown).sort((a,b) => errBreakdown[b] - errBreakdown[a]);
+    $('ltErrorBreakdown').innerHTML = errKeys.length ? `
+      <h3 style="font-size:14px; margin:16px 0 8px; color:var(--high);">Network Errors</h3>
+      <table class="status">
+        <thead><tr><th>Error Message</th><th>Count</th></tr></thead>
+        <tbody>${errKeys.map(k => `<tr><td>${escapeHtml(k)}</td><td>${fmtNum(errBreakdown[k])}</td></tr>`).join('')}</tbody>
+      </table>` : '';
+
+    return lt;
+  } catch { return null; }
+}
+
+refreshScans();
+refreshLoads();
 </script>
 </body>
 </html>

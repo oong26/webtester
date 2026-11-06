@@ -1,0 +1,210 @@
+openapi: 3.0.3
+info:
+  title: WebTester API
+  version: 0.1.0
+paths:
+  /api/v1/scans:
+    get:
+      summary: List recent scans
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: Scans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Scan'
+    post:
+      summary: Create and start a scan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateScanRequest'
+      responses:
+        '202':
+          description: Scan accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scan'
+        '422':
+          description: Validation failed
+  /api/v1/scans/{scanId}:
+    get:
+      summary: Get scan status
+      parameters:
+        - name: scanId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Scan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scan'
+        '404':
+          description: Not found
+  /api/v1/scans/{scanId}/findings:
+    get:
+      summary: List findings for a scan
+      parameters:
+        - name: scanId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Findings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Finding'
+  /api/v1/load-tests:
+    get:
+      summary: List recent load tests
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+      responses:
+        '200':
+          description: Load tests
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/LoadTest' }
+    post:
+      summary: Create and start a load test
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateLoadTestRequest' }
+      responses:
+        '202':
+          description: Load test accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoadTest' }
+        '422': { description: Validation failed }
+  /api/v1/load-tests/{id}:
+    get:
+      summary: Get load test status and results
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Load test
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoadTest' }
+        '404': { description: Not found }
+  /api/v1/load-tests/{id}/cancel:
+    post:
+      summary: Cancel a running load test
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Cancellation requested }
+        '422': { description: Load test is not running }
+components:
+  schemas:
+    ScanType:
+      type: string
+      enum: [baseline, api, full]
+    ScanAuth:
+      type: object
+      required: [header_name, user_a]
+      properties:
+        header_name: { type: string }
+        user_a: { type: string }
+        user_b: { type: string }
+    CreateScanRequest:
+      type: object
+      required: [target_url, scan_type]
+      properties:
+        target_url: { type: string, format: uri }
+        openapi_url: { type: string, format: uri }
+        scan_type: { $ref: '#/components/schemas/ScanType' }
+        confirm_ownership: { type: boolean }
+        auth: { $ref: '#/components/schemas/ScanAuth' }
+        bola_probe_urls:
+          type: array
+          items: { type: string, format: uri }
+    Scan:
+      type: object
+      properties:
+        id: { type: string }
+        status: { type: string }
+        progress: { type: integer }
+        target_url: { type: string }
+        scan_type: { $ref: '#/components/schemas/ScanType' }
+        error_message: { type: string }
+        findings_count: { type: integer }
+        created_at: { type: string, format: date-time }
+    Finding:
+      type: object
+      properties:
+        id: { type: string }
+        scan_id: { type: string }
+        rule_id: { type: string }
+        name: { type: string }
+        severity: { type: string }
+        confidence: { type: string }
+        url: { type: string }
+        evidence: { type: string }
+        cwe: { type: integer }
+        source: { type: string }
+    CreateLoadTestRequest:
+      type: object
+      required: [target_url, method, duration_seconds, requests_per_sec, concurrency]
+      properties:
+        target_url: { type: string, format: uri }
+        method: { type: string, enum: [GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS] }
+        headers: { type: object, additionalProperties: { type: string } }
+        body: { type: string }
+        duration_seconds: { type: integer, minimum: 1, maximum: 600 }
+        requests_per_sec: { type: integer, minimum: 1, maximum: 5000 }
+        concurrency: { type: integer, minimum: 1, maximum: 500 }
+        confirm_ownership: { type: boolean }
+    LoadTest:
+      type: object
+      properties:
+        id: { type: string }
+        target_url: { type: string }
+        method: { type: string }
+        duration_seconds: { type: integer }
+        requests_per_sec: { type: integer }
+        concurrency: { type: integer }
+        status: { type: string, enum: [queued, running, completed, failed, cancelled] }
+        error_message: { type: string }
+        created_at: { type: string, format: date-time }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time }
+        total_requests: { type: integer }
+        successful: { type: integer }
+        failed: { type: integer }
+        error_rate: { type: number }
+        rps_achieved: { type: number }
+        min_ms: { type: number }
+        max_ms: { type: number }
+        mean_ms: { type: number }
+        p50_ms: { type: number }
+        p90_ms: { type: number }
+        p95_ms: { type: number }
+        p99_ms: { type: number }
+        status_breakdown: { type: object, additionalProperties: { type: integer } }

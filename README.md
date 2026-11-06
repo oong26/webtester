@@ -1,76 +1,45 @@
 # WebTester
 
-A small Go tool with a web UI for testing apps you own: endpoint assertions, basic security checks and a simple load test.
-
-> Only run this against systems you own or have written permission to test.
+Request-centric security scanner: ZAP-backed scans plus custom passive and BOLA checks.
 
 ## Run
 
-```bash
-go run .                      # UI on http://127.0.0.1:8080
-go run . -addr 127.0.0.1:9000 # custom port
-```
+    go mod tidy
+    go build ./...
+    go run ./cmd/app
 
-Keep it bound to localhost. The server sends requests to whatever URL it is given, so it should not be exposed to a network.
+Requires Docker (for ZAP) and network access on first `go mod tidy`.
 
-## Build
+## Endpoints
 
-```bash
-go build -o webtester .
-./webtester
-```
+- `POST /api/v1/scans` — start a scan (`baseline`, `api`, `full`)
+- `GET  /api/v1/scans/{scanId}` — poll status and progress
+- `GET  /api/v1/scans/{scanId}/findings` — normalized findings
 
-## What it checks
+## Example
 
-| Group | Checks |
-|---|---|
-| Endpoint tests | method, path, headers, body, expected status, body contains, max latency |
-| Security | missing security headers, version disclosure, CORS misconfig, exposed paths (`/.env`, `/.git/HEAD`, `/debug/pprof/`...), malformed input (bad JSON, oversized body, SQLi/XSS/traversal probes, error and stack-trace leaks), auth required (no token / invalid token), rate limiting |
-| Load | N requests with C workers, req/s, p50/p95/p99, error rate |
+    curl -s -X POST localhost:8080/api/v1/scans \
+      -H 'content-type: application/json' \
+      -d '{
+        "target_url": "http://localhost:8000",
+        "openapi_url": "http://localhost:8000/api/v1/openapi.yaml",
+        "scan_type": "api",
+        "confirm_ownership": true,
+        "auth": {
+          "header_name": "Authorization",
+          "user_a": "Bearer AAA",
+          "user_b": "Bearer BBB"
+        },
+        "bola_probe_urls": ["http://localhost:8000/api/v1/farms/1"]
+      }'
 
 ## Layout
 
-```
-main.go                      server entry, embeds web/
-web/index.html               single-page UI
-internal/checks/             Check interface + all checks (add new ones here)
-internal/runner/             builds checks from a request and aggregates a report
-internal/server/             POST /api/run (same-origin JSON only)
-```
-
-## Add a check
-
-Implement the interface in `internal/checks/checks.go`:
-
-```go
-type Check interface {
-    Name() string
-    Run(ctx context.Context, t Target) []Result
-}
-```
-
-Then wire it up in `internal/runner/runner.go` and add a toggle in `web/index.html`.
-
-## API
-
-`POST /api/run` with `Content-Type: application/json`:
-
-```json
-{
-  "base_url": "http://localhost:3000",
-  "headers": {"Authorization": "Bearer ..."},
-  "confirm_ownership": true,
-  "endpoints": [{"name": "health", "method": "GET", "path": "/health", "expect_status": 200}],
-  "security": {"headers": true, "cors": true, "exposed_paths": true, "malformed_input": true,
-               "probe_path": "/", "auth_paths": ["/api/users"], "rate_limit_path": "/api/login"},
-  "load": {"path": "/health", "total": 200, "concurrency": 10}
-}
-```
-
-Returns a report with a summary and one result per assertion or finding.
-
-## Tests
-
-```bash
-go test ./...
-```
+- `cmd/app` — entrypoint
+- `api/` — OpenAPI contract
+- `internal/clients/zap` — ZAP client (Docker now, REST later)
+- `internal/checks` — custom passive + BOLA rules
+- `internal/services` — orchestration
+- `internal/stores` — SQLite persistence
+- `internal/handlers` — HTTP layer
+- `pkg/` — shared errors, response, middleware
