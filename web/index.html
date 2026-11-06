@@ -14,6 +14,7 @@
   nav button { background:transparent; color:var(--muted); border:1px solid transparent;
     padding:6px 12px; border-radius:4px; cursor:pointer; font-size:13px; }
   nav button.active { background:var(--panel); color:var(--text); border-color:var(--border); }
+  .header-right { margin-left:auto; display:flex; gap:8px; align-items:center; }
   main { display: grid; grid-template-columns: 360px 1fr; height: calc(100vh - 53px); }
   aside { border-right: 1px solid var(--border); padding: 16px; overflow-y:auto; }
   section.detail { padding: 16px 24px; overflow-y:auto; }
@@ -66,6 +67,28 @@
   table.status td, table.status th { padding: 6px 10px; text-align: left; font-size: 12px;
     border-bottom: 1px solid var(--border); }
   table.status th { color: var(--muted); font-weight: 500; }
+
+  /* Help modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000;
+    display:none; align-items:center; justify-content:center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    max-width: 720px; width: 100%; max-height: 85vh; overflow: hidden; display:flex; flex-direction:column; }
+  .modal-header { display:flex; justify-content: space-between; align-items:center;
+    padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .modal-header h2 { margin:0; font-size: 16px; }
+  .modal-close { background:none; border:none; color:var(--muted); font-size:24px; cursor:pointer; line-height:1; padding:0 4px; }
+  .modal-close:hover { color: var(--text); }
+  .modal-body { padding: 20px; overflow-y: auto; }
+  .help-section { margin-bottom: 24px; }
+  .help-section h3 { font-size: 13px; color: var(--low); margin: 0 0 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .help-item { margin-bottom: 16px; }
+  .help-item:last-child { margin-bottom: 0; }
+  .help-item h4 { font-size: 13px; font-weight: 600; margin: 0 0 4px; }
+  .help-item p { font-size: 12px; color: var(--muted); margin: 0; line-height: 1.5; }
+  .help-item code { background: var(--bg); padding: 1px 6px; border-radius: 3px; font-size: 11px; color: var(--med); }
+  .help-tab { display:none; }
+  .help-tab.active { display:block; }
 </style>
 </head>
 <body>
@@ -75,6 +98,9 @@
     <button data-tab="scans" class="active">Security scans</button>
     <button data-tab="load">Load tests</button>
   </nav>
+  <div class="header-right">
+    <button id="helpBtn" class="ghost" style="font-size:16px; padding:6px 10px;" title="Help (Ctrl+/)">?</button>
+  </div>
 </header>
 
 <main data-page="scans">
@@ -206,6 +232,103 @@
     </div>
   </section>
 </main>
+
+<!-- Help Modal -->
+<div id="helpModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="helpTitle">WebTester Help</h2>
+      <button class="modal-close" id="helpClose" aria-label="Close help">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="helpScans" class="help-tab active">
+        <div class="help-section">
+          <h3>Security Scans</h3>
+          <div class="help-item">
+            <h4>Target URL</h4>
+            <p>The base URL of the application to scan (e.g., <code>http://localhost:8000</code> or <code>https://api.example.com</code>). All scan types use this as the starting point.</p>
+          </div>
+          <div class="help-item">
+            <h4>Scan Type</h4>
+            <p>Choose the scanning strategy:</p>
+            <ul style="margin: 6px 0 0 18px; font-size: 12px; color: var(--muted); line-height: 1.8;">
+              <li><strong>Baseline (passive)</strong> — Passive checks only: security headers, CSP, cookie flags, information disclosure, SSL/TLS configuration. No active probing.</li>
+              <li><strong>API (OpenAPI)</strong> — Parses an OpenAPI spec and runs parameter fuzzing, auth validation, and schema compliance tests against each endpoint.</li>
+              <li><strong>Full (active)</strong> — Active crawling + injection probes (SQLi, XSS, path traversal, command injection) plus passive checks. Use only on targets you own.</li>
+            </ul>
+          </div>
+          <div class="help-item">
+            <h4>OpenAPI URL <span style="font-weight:normal; color:var(--muted);">(API scan only)</span></h4>
+            <p>URL to the OpenAPI/Swagger specification (YAML or JSON). The scanner will fetch this and test each defined operation.</p>
+          </div>
+          <div class="help-item">
+            <h4>Ownership Confirmation</h4>
+            <p>Required checkbox confirming you have permission to test the target. Prevents unauthorized scanning.</p>
+          </div>
+          <div class="help-item">
+            <h4>Auth Header</h4>
+            <p>Header name used for authentication (default: <code>Authorization</code>). Used for all authenticated requests in API and Full scans.</p>
+          </div>
+          <div class="help-item">
+            <h4>User A Token</h4>
+            <p>Authentication token for the primary test user. Required for authenticated scans and BOLA (Broken Object Level Authorization) testing.</p>
+          </div>
+          <div class="help-item">
+            <h4>User B Token <span style="font-weight:normal; color:var(--muted);">(BOLA only)</span></h4>
+            <p>Second user's token. Used to probe for BOLA/IDOR by attempting to access User A's resources with User B's credentials.</p>
+          </div>
+          <div class="help-item">
+            <h4>BOLA Probe URLs</h4>
+            <p>One URL per line containing object identifiers (e.g., <code>/api/users/123/profile</code>, <code>/api/orders/456</code>). The scanner attempts to access each with both User A and User B tokens to detect authorization flaws.</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="helpLoad" class="help-tab">
+        <div class="help-section">
+          <h3>Load Tests</h3>
+          <div class="help-item">
+            <h4>Target URL</h4>
+            <p>The exact endpoint to load test (e.g., <code>http://localhost:8000/api/health</code>). Supports query parameters.</p>
+          </div>
+          <div class="help-item">
+            <h4>Method</h4>
+            <p>HTTP method for the request: GET, HEAD, OPTIONS, POST, PUT, PATCH, DELETE.</p>
+          </div>
+          <div class="help-item">
+            <h4>Duration (s)</h4>
+            <p>How long to run the test in seconds (1–600). The test generates requests at the target RPS for this duration, then stops. In-flight requests are cancelled at the deadline.</p>
+          </div>
+          <div class="help-item">
+            <h4>Requests / Second</h4>
+            <p>Target request rate (1–5000). The producer spaces requests evenly (e.g., 50 RPS = one request every 20 ms). Actual achieved RPS may be lower if the target is slow (backpressure).</p>
+          </div>
+          <div class="help-item">
+            <h4>Concurrency</h4>
+            <p>Number of simultaneous workers (1–500). Each worker processes one request at a time. Higher concurrency allows more in-flight requests when latency is high, but consumes more connections.</p>
+          </div>
+          <div class="help-item">
+            <h4>Headers <span style="font-weight:normal; color:var(--muted);">(optional)</span></h4>
+            <p>Request headers in either format:
+              <ul style="margin: 6px 0 0 18px; font-size: 12px; color: var(--muted); line-height: 1.8;">
+                <li><strong>Name: Value</strong> — one per line (e.g., <code>Authorization: Bearer token</code>)</li>
+                <li><strong>JSON object</strong> — paste a full JSON object (e.g., <code>{"X-API-Key": "abc", "Content-Type": "application/json"}</code>)</li>
+              </ul>
+            </p>
+          </div>
+          <div class="help-item">
+            <h4>Request Body <span style="font-weight:normal; color:var(--muted);">(optional)</span></h4>
+            <p>Raw body for POST/PUT/PATCH requests. Sent as-is for every request.</p>
+          </div>
+          <div class="help-item">
+            <h4>Ownership Confirmation</h4>
+            <p>Required checkbox confirming you have permission to load test the target.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 const $ = (id) => document.getElementById(id);
@@ -489,6 +612,60 @@ async function renderLoad() {
 
 refreshScans();
 refreshLoads();
+
+/* Help Modal */
+(function() {
+  const modal = $('helpModal');
+  const openBtn = $('helpBtn');
+  const closeBtn = $('helpClose');
+  const tabs = {
+    scans: $('helpScans'),
+    load: $('helpLoad')
+  };
+  let lastActiveTab = 'scans';
+
+  function openHelp() {
+    modal.classList.add('open');
+    showTab(lastActiveTab);
+    document.body.style.overflow = 'hidden';
+  }
+  function closeHelp() {
+    modal.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function showTab(tab) {
+    lastActiveTab = tab;
+    Object.entries(tabs).forEach(([k, el]) => {
+      el.classList.toggle('active', k === tab);
+    });
+  }
+
+  openBtn.addEventListener('click', openHelp);
+  closeBtn.addEventListener('click', closeHelp);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeHelp();
+  });
+
+  // Keyboard: Ctrl+/ or F1 to open, Escape to close
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey && e.key === '/') || e.key === 'F1') {
+      e.preventDefault();
+      openHelp();
+    }
+    if (e.key === 'Escape' && modal.classList.contains('open')) {
+      closeHelp();
+    }
+  });
+
+  // Sync help tab with main tab
+  document.querySelectorAll('nav button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (modal.classList.contains('open')) {
+        showTab(btn.dataset.tab);
+      }
+    });
+  });
+})();
 </script>
 </body>
 </html>
