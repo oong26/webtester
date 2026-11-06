@@ -99,6 +99,10 @@
     <button data-tab="load">Load tests</button>
   </nav>
   <div class="header-right">
+    <div id="userInfo" class="hidden" style="display:flex; align-items:center; gap:12px; font-size:13px;">
+      <span id="userEmail" style="color:var(--muted);"></span>
+      <button id="logoutBtn" class="ghost" style="font-size:11px;">Logout</button>
+    </div>
     <button id="helpBtn" class="ghost" style="font-size:16px; padding:6px 10px;" title="Help (Ctrl+/)">?</button>
   </div>
 </header>
@@ -232,6 +236,36 @@
     </div>
   </section>
 </main>
+
+<!-- Auth Modal -->
+<div id="authModal" class="modal-overlay" style="z-index: 2000; background: var(--bg);">
+  <div class="modal" style="max-width: 400px;">
+    <div class="modal-header">
+      <h2 id="authTitle">Welcome to WebTester</h2>
+    </div>
+    <div class="modal-body">
+      <div id="setupView" class="hidden">
+        <p class="muted" style="margin-top:0; margin-bottom:16px;">Create the initial administrator account to get started.</p>
+        <label>Name</label>
+        <input id="setupName" type="text" placeholder="Admin User" />
+        <label>Email</label>
+        <input id="setupEmail" type="email" placeholder="admin@example.com" />
+        <label>Password</label>
+        <input id="setupPassword" type="password" placeholder="Minimum 8 characters" />
+        <button id="setupBtn" class="primary" style="width:100%; margin-top:16px;">Create Account</button>
+      </div>
+      <div id="loginView" class="hidden">
+        <p class="muted" style="margin-top:0; margin-bottom:16px;">Log in to access the dashboard.</p>
+        <label>Email</label>
+        <input id="loginEmail" type="email" placeholder="admin@example.com" />
+        <label>Password</label>
+        <input id="loginPassword" type="password" />
+        <button id="loginBtn" class="primary" style="width:100%; margin-top:16px;">Login</button>
+      </div>
+      <div id="authError" class="muted" style="color:var(--high); margin-top:12px; text-align:center;"></div>
+    </div>
+  </div>
+</div>
 
 <!-- Help Modal -->
 <div id="helpModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
@@ -610,8 +644,186 @@ async function renderLoad() {
   } catch { return null; }
 }
 
-refreshScans();
-refreshLoads();
+/* -------------------- Auth -------------------- */
+let accessToken = localStorage.getItem('access_token');
+let refreshToken = localStorage.getItem('refresh_token');
+let currentUser = null;
+
+const authModal = $('authModal');
+const setupView = $('setupView');
+const loginView = $('loginView');
+const authTitle = $('authTitle');
+const authError = $('authError');
+
+function showAuthModal(view) {
+  authError.textContent = '';
+  setupView.classList.toggle('hidden', view !== 'setup');
+  loginView.classList.toggle('hidden', view !== 'login');
+  authTitle.textContent = view === 'setup' ? 'Initial Setup' : 'Login';
+  authModal.style.display = 'flex';
+}
+
+function hideAuthModal() {
+  authModal.style.display = 'none';
+}
+
+function saveTokens(access, refresh) {
+  accessToken = access;
+  refreshToken = refresh;
+  localStorage.setItem('access_token', access);
+  localStorage.setItem('refresh_token', refresh);
+}
+
+function clearTokens() {
+  accessToken = null;
+  refreshToken = null;
+  currentUser = null;
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  $('userInfo').classList.add('hidden');
+}
+
+function updateUserUI() {
+  if (currentUser) {
+    $('userEmail').textContent = currentUser.email;
+    $('userInfo').classList.remove('hidden');
+    $('userInfo').style.display = 'flex';
+  } else {
+    $('userInfo').classList.add('hidden');
+  }
+}
+
+// Override api() to add auth token
+const originalApi = api;
+api = async function(path, opts = {}) {
+  if (accessToken && path.startsWith('/api/')) {
+    opts.headers = { ...opts.headers, 'Authorization': `Bearer ${accessToken}` };
+  }
+  const res = await fetch(path, opts);
+  const body = await res.json().catch(() => ({}));
+
+  if (res.status === 401 && accessToken && path.startsWith('/api/v1/') && !path.includes('/auth/')) {
+    // Try to refresh token
+    try {
+      const refreshData = await originalApi('/api/v1/auth/refresh', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      saveTokens(refreshData.access_token, refreshData.refresh_token);
+      currentUser = refreshData.user;
+      updateUserUI();
+      // Retry original request
+      opts.headers['Authorization'] = `Bearer ${refreshData.access_token}`;
+      const retryRes = await fetch(path, opts);
+      const retryBody = await retryRes.json().catch(() => ({}));
+      if (!retryRes.ok) throw new Error(retryBody?.error?.message || `HTTP ${retryRes.status}`);
+      return retryBody.data;
+    } catch (e) {
+      clearTokens();
+      showAuthModal('login');
+      throw new Error('Session expired. Please log in again.');
+    }
+  }
+
+  if (!res.ok) throw new Error(body?.error?.message || `HTTP ${res.status}`);
+  return body.data;
+};
+
+// Setup
+$('setupBtn').addEventListener('click', async () => {
+  authError.textContent = '';
+  $('setupBtn').disabled = true;
+  try {
+    const data = await originalApi('/api/v1/auth/setup', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: $('setupName').value.trim(),
+        email: $('setupEmail').value.trim(),
+        password: $('setupPassword').value,
+      }),
+    });
+    saveTokens(data.access_token, data.refresh_token);
+    currentUser = data.user;
+    updateUserUI();
+    hideAuthModal();
+    refreshScans();
+    refreshLoads();
+  } catch (e) {
+    authError.textContent = e.message;
+  } finally {
+    $('setupBtn').disabled = false;
+  }
+});
+
+// Login
+$('loginBtn').addEventListener('click', async () => {
+  authError.textContent = '';
+  $('loginBtn').disabled = true;
+  try {
+    const data = await originalApi('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        email: $('loginEmail').value.trim(),
+        password: $('loginPassword').value,
+      }),
+    });
+    saveTokens(data.access_token, data.refresh_token);
+    currentUser = data.user;
+    updateUserUI();
+    hideAuthModal();
+    refreshScans();
+    refreshLoads();
+  } catch (e) {
+    authError.textContent = e.message;
+  } finally {
+    $('loginBtn').disabled = false;
+  }
+});
+
+// Logout
+$('logoutBtn').addEventListener('click', async () => {
+  try {
+    await originalApi('/api/v1/auth/logout', { method: 'POST' });
+  } catch (e) { /* ignore */ }
+  clearTokens();
+  showAuthModal('login');
+});
+
+// Initialize auth
+(async function initAuth() {
+  // Check setup status
+  try {
+    const status = await originalApi('/api/v1/auth/status');
+    if (status.setup_required) {
+      showAuthModal('setup');
+      return;
+    }
+  } catch (e) {
+    console.error('Failed to check auth status:', e);
+    showAuthModal('login');
+    return;
+  }
+
+  // Try to fetch current user if we have a token
+  if (accessToken) {
+    try {
+      const user = await originalApi('/api/v1/auth/me');
+      currentUser = user;
+      updateUserUI();
+      refreshScans();
+      refreshLoads();
+    } catch (e) {
+      // Token might be expired, show login
+      clearTokens();
+      showAuthModal('login');
+    }
+  } else {
+    showAuthModal('login');
+  }
+})();
 
 /* Help Modal */
 (function() {

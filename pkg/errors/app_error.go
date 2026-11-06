@@ -33,3 +33,11 @@ func Internal(msg string, err error) *AppError {
 func Unavailable(msg string, err error) *AppError {
 	return &AppError{Status: 503, Code: "service_unavailable", Message: msg, Err: err}
 }
+
+func Unauthorized(msg string) *AppError {
+	return &AppError{Status: 401, Code: "unauthorized", Message: msg}
+}
+
+func Conflict(msg string) *AppError {
+	return &AppError{Status: 409, Code: "conflict", Message: msg}
+}
